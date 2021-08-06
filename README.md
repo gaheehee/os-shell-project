@@ -19,158 +19,49 @@ Let's build my powerful shell with those system calls.
 - Currently, the shell keeps getting input commands and processes them until the user enters `exit`. In that case, the shell program exits.
 
 
-#### Execute external commands (50 pts)
-- When the shell gets a command, it should **run the executable** as explained in Background. Each command can be comprised of one exeutable followed by zero or more arguments. For example;
+### <mark>Outline how programs are launched and how arguments are passed</mark>  
 
-  ```bash
-  $ /bin/ls
-  list_head.h  Makefile  pa1.c  parser.c  parser.h  README.md  types.h
-  $ ls
-  list_head.h  Makefile  pa1.c  parser.c  parser.h  README.md  types.h
-  $ pwd
-  /home/sanghoon/os/pa1
-  $ cp pa1.c pa1-backup.c
-  $ ls
-  list_head.h  Makefile  pa1-backup.c  pa1.c  parser.c  parser.h  README.md  types.h
-  $ exit
-  ```
-- Your task is to execute external executables (such as `ls`, `pwd`, and `cp`), **NOT** to implement the function of each command.
+쉘에 입력을 하면, append_history함수를 통해 list_head를 이용하여 입력문자열을 history안에 차
+곡차곡 쌓고, __process_command, parse_command 함수를 통해 입력 문자열을 token으로 만든다.
+이렇게 토큰화 된 것을 run_command함수로 보내어 호출하게 되는데, run_command에서는 가장
+첫번째 token이 어떤 명령어인지 체크를 한다. 만약 명령어가 exit라면 쉘을 나가도록 하고, 아니
+라면 token중에 | 가 있는지 체크한다. |가 있다면 pipe를 처리하고, 없다면 fork()를 하여 부모 프
+로세스에서는 내부적으로 cd, history, ! 명령어를 처리해주고 나머지 명령어들은 자식 프로세스에
+서 execvp를 통해 처리해준다. 그리고 부모 프로세스는 자식이 다 처리하고 죽을 때까지 wait한
+다.  
+	
+### <mark>How the command history is maintained and replayed later</mark>  
 
-- When the specified executable cannot be executed for some reasons, print out the following message to `stderr`.
+쉘에서 입력을 받으면 parse하기 전에 append_history함수를 통하여 list_add_tail를 이용하여 list
+에 입력을 쌓게 된다. history명령이 쉘에 들어오면, run_command함수에서 첫번째 토큰이 “history”
+인지 체크하고 history 명령어라면 list_for_each_entry를 통해 이전에 쌓아 놓은 이전 입력(명령) 
+list를 순회하면서 차근차근 하나씩 이전 입력들을 출력하게 된다.
+그리고 ! number 명령어 입력을 받으면 run_command에서 ! 명령어인지 체크하고, 맞다면
+history list를 순회하면서 number번째 순회에서 이전 명령문자열을 뽑아내어 parse하여 토큰으로
+나눈 후, run_command에 토큰을 넣어서 호출시켜 이전 명령어를 실행시켜준다. 이렇게 history에
+서 원하는 이전 명령을 ! number 명령어를 통해 재실행시킬 수 있다.  
 
-  ```C
-  if (unable to execute the specified command) {
-  	fprintf(stderr, "Unable to execute %s\n", the first token of the command);
-  }
+### <mark>My STRATEGY to implement the pipe</mark>  
 
-	$ blah blahh
-	Unable to execute blah
-	$
-  ```
+우선 명령어에 | 가 있다면, | 앞의 명령어와 | 뒤의 명령어로 나누어 주었다. 그리고나서 파이프
+를 하나 생성하였고, fork()를 하여 그 자식 프로세스는 read를 닫고, dup2를 이용하여 파이프의
+다른 한쪽에 출력이 쓰여지도록 하였다. 그리고 | 앞의 명령어를 execvp를 이용해 수행하였다. 따
+라서 | 앞의 명령어를 수행한 결과를 다른 한쪽의 파이프에서 읽을 수 있게 되었다.
+부모프로세스에서는 fork()를 한번 더 하여 자식 프로세스를 하나 더 생성하였다. 이 자식 프로세
+스가 write를 닫고, dup2를 이용하여 아까 자식 프로세스가 쓴 출력을 파이프에서 읽어와서 그걸
+입력으로 하는 | 뒤에 명령어를 execvp를 통하여 처리하였다.
+이렇게 fork()를 두번하여 첫번째 자식 프로세스에서는 | 앞의 명령어를 처리하여 파이프에 넣고,
+부모안의 두번째 자식 프로세스에서는 파이프에서 결과를 읽어와 이 결과를 입력으로 하여 | 뒤
+의 명령어를 처리하였다.  
 
-- Use `toy` program which is included in the template code for your development and testing. It simply prints out the arguments it receives, so you can check whether your implementation handles input commands properly.
+### <mark>AND lessons learned</mark>  
 
-  ```bash
-  $ ./toy arg1 arg2 arg3 arg4
-  pid  = xxxxxx
-  argc = 5
-  argv[0] = ./toy
-  argv[1] = arg1
-  argv[2] = arg2
-  argv[3] = arg3
-  argv[4] = arg4
-  done!
-  ```
+Run_command exec을 짜면서, 외부적으로 명령을 처리하는 것, 즉 execvp는 자식 프로세스에서
+써야 한다는 것을 알게 되었다.
+그리고 pipe를 구현하면서 dup2를 통하여 결과를 다른 쪽에 출력되도록 조정할 수 있음을 알게
+되었고, close의 중요성을 알게 되었다.
+Close를 제대로 하지 않아 많은 시행착오를 겪었고 그 시행착오 덕분에 확실히 알게 된 것은
+write가 열려 있으면 read를 하는 프로세스는 write가 닫히기 전까지 무한하게 대기한다는 것이다.
+그리고 이론만으로는 개념이 머리에 확실하게 박히지 않았던 부분들을 확실하게 알아갈 수 있다.  
 
-- Hint: `fork(), exec(), wait(), waitpid()` 
-
-
-#### Change working directory
-- The shell has so-called *current working directory* on which the shell is on. All operations are processed on the current working directory by default, and you can check the current working directory with `/bin/pwd`. This is similar to what happens when you browse folders with the Explorer; when you select "New Folder", a new folder will be created on the "current" folder. You can change the current folder by selecting one of folders in the directory.
-
-- Implement `cd`, a special command manipulating the current working directory. This command is special in that this feature is not handled by executing executables but the shell understands the command and processes itself. In this sense, this type of command is called a *built-in command*.
-
-- Each user has one's *home directory* which is denoted by `~`. The actual path is defined in `$HOME` environment variable. Make `cd` command to understand it
-
-  ```bash
-  $ pwd
-  /home/directory/of/your/account  # Assume this is the home directory of the user
-  $ cd /somewhere/i/dont/know
-  $ pwd
-  /somewhere/i/dont/know
-  $ cd ~
-  $ pwd
-  /home/directory/of/your/account
-  $ cd /somewhere/i/know
-  $ pwd
-  /somewhere/i/know
-  $ cd   # Equivalent to cd ~
-  $ pwd
-  /home/directory/of/your/account
-  ```
-
-- Hints: `chdir(), getenv("HOME")`
-
-
-#### Keep the command history
-- It would be awesome if the shell remembers all your past commands and allows to run some easily, isn't it? So, the instructor initially designed the framework to support the nice feature, but could not finish by the deadline. Your task is to complete this feature.
-
-- When the framework receives a line of command, it invokes `keep_in_history()` before processing the command. Complete the function to maintain the command history. You must use `struct list_head history` to keep the history.
-
-- When the user enters `history` in the prompt, print out the history of commands in the following format. Note that `history` will be a built-in command since the shell needs to process this command by itself.
-
-  ```
-	fprintf(stderr, "%2d: %s", index, command);
-	```
-
-- Allow the user to execute n-th command in the history with `! <number>`. See below example
-
-  ```bash
-	$ ls
-	list_head.h  Makefile  pa1.c  pa1.o  parser.c  parser.h  parser.o  posh  README.md  subdir  testcases  toy  toy.c  toy.o  types.h
-	$ cp pa1.c temp.c
-	$ ls -al
-	...
-	$ cat types.h parser.h
-	$ history
-	 0: ls
-	 1: cp pa1.c temp.c
-	 2: ls -al
-	 3: cat types.h parser.h
-	 4: history
-	$ ! 0   # Rerun 0-th command in the history, which is "ls".
-	list_head.h  Makefile  pa1-backup.c  pa1.c  pa1.o  parser.c  parser.h  parser.o  posh  README.md  subdir  temp.c  testcases  toy  toy.c  toy.o	types.h
-	$ history
-	 0: ls
-	 1: cp pa1.c temp.c
-	 2: ls -al
-	 3: cat types.h parser.h
-	 4: history
-	 5: ! 0
-	 6: history
-	$ ! 4   # 4-th command in the history is "history"
-	 0: ls
-	 1: cp pa1.c temp.c
-	 2: ls -al
-	 3: cat types.h parser.h
-	 4: history
-	 5: ! 0
-	 6: history
-	 7: ! 4
-	$ ! 7  # 7-th entry is "! 4", which is "history"
-	 0: ls
-	 1: cp pa1.c temp.c
-	 2: ls -al
-	 3: cat types.h parser.h
-	 4: history
-	 5: ! 0
-	 6: history
-	 7: ! 4
-	 8: ! 7
-	$
-	```
-- Hint: Recall the exercise done as PA0.
-
-
-#### Connect two processes with a pipe
-- As we discussed in the class, we can connect two processes with an ordinary pipe. Implement this feature.
-
-- The user may enter two commands with the pipe symbol `|` in between. All output of the first command should be carried to the input of the second command.
-
-  ```bash
-	$ cat pa1.c | sort -n
-	$ echo "hello my cruel world" | cut -c-5
-
-- Note that the shell should be *sane* after processing the pipe.
-
-- Hints
-  - Use `pipe()` and `dup2()`. 
-	- Implement incrementally. First check whether the pipe symbol exists in the tokens. If not, just do execute the command. If exists, split the tokens into two pars and feed them to **two** different processes which are connected through a pipe.
-
-
-### Restriction and hints
-- For your coding practice, the compiler is set to halt on some (important) warnings. Write your code to fully comply the C99 standard.
-- DO NOT USE `system()` system call. You will get 0 pts if you use it.
-- DO NOT implement external programs' features by yourself (e.g., printing out a message to handle `echo` command, listing the current directory to handle `ls` command, etc). You will not get any point in this case.
-- It is advised to test your code on your computer first and to implement incrementally. Some sample inputs are included under `testcase` directory. Try to input each line or just run `./posh < [input file]`.
 
