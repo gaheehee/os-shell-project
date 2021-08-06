@@ -1,7 +1,5 @@
 ## Project #1: My Powerful Shell
 
-### *** Due on 11:59:59pm, April 2 (Friday)***
-
 ### Goal
 With the system calls learned in the class and a few additional ones, you are ready to manipulate processes in the system.
 Let's build my powerful shell with those system calls.
@@ -67,7 +65,7 @@ Let's build my powerful shell with those system calls.
 - Hint: `fork(), exec(), wait(), waitpid()` 
 
 
-#### Change working directory (20 pts)
+#### Change working directory
 - The shell has so-called *current working directory* on which the shell is on. All operations are processed on the current working directory by default, and you can check the current working directory with `/bin/pwd`. This is similar to what happens when you browse folders with the Explorer; when you select "New Folder", a new folder will be created on the "current" folder. You can change the current folder by selecting one of folders in the directory.
 
 - Implement `cd`, a special command manipulating the current working directory. This command is special in that this feature is not handled by executing executables but the shell understands the command and processes itself. In this sense, this type of command is called a *built-in command*.
@@ -94,7 +92,7 @@ Let's build my powerful shell with those system calls.
 - Hints: `chdir(), getenv("HOME")`
 
 
-#### Keep the command history (50 pts)
+#### Keep the command history
 - It would be awesome if the shell remembers all your past commands and allows to run some easily, isn't it? So, the instructor initially designed the framework to support the nice feature, but could not finish by the deadline. Your task is to complete this feature.
 
 - When the framework receives a line of command, it invokes `keep_in_history()` before processing the command. Complete the function to maintain the command history. You must use `struct list_head history` to keep the history.
@@ -154,7 +152,7 @@ Let's build my powerful shell with those system calls.
 - Hint: Recall the exercise done as PA0.
 
 
-#### Connect two processes with a pipe (100 pts)
+#### Connect two processes with a pipe
 - As we discussed in the class, we can connect two processes with an ordinary pipe. Implement this feature.
 
 - The user may enter two commands with the pipe symbol `|` in between. All output of the first command should be carried to the input of the second command.
@@ -176,30 +174,3 @@ Let's build my powerful shell with those system calls.
 - DO NOT implement external programs' features by yourself (e.g., printing out a message to handle `echo` command, listing the current directory to handle `ls` command, etc). You will not get any point in this case.
 - It is advised to test your code on your computer first and to implement incrementally. Some sample inputs are included under `testcase` directory. Try to input each line or just run `./posh < [input file]`.
 
-
-### Submission / Grading
-
-- 260 pts in total
-- Source: ***pa1.c*** (220 pts in total)
-  - Points will be prorated by testcase results.
-- Document: ***One PDF document*** (30 pts). It should include **ALL** the followings;
-	- Outline how programs are launched and how arguments are passed
-	- How the command history is maintained and recalled later
-	- Your ***STRATEGY*** to implement the pipe
-	- AND lessons learned
-	- NO MORE THAN ***FOUR*** PAGES
-	- DO NOT INCLUDE COVER PAGE, YOUR NAME, NOR STUDENT ID
-	- YOU WILL GET 0 pts for documentation if you do not comply the statements
-	- Surprisingly, the instructor knows C syntax; you will not get a good point if you just READ code on the document.
-- Git repository URL at git.ajou.ac.kr (10 pts)
-  - To get the points, you should actually use the repository to manage your code (i.e., have more than two commits which are hours aparts). You will not get any point if you just committed your final code or the repository is not properly cloned.
-	- How to create your repository to submit:
-		- Clone this repository into your computer.
-		- Create a *private* project from http://git.ajou.ac.kr.
-		- Push the local repository onto the gitlab repository.
-		- Generate a deploy token from Settings/Repository/Deploy Token. Make sure you're working with deploy **token** not deploy **key**.
-		- Register at PASubmit using the repository URL and deploy token.
-		- PASubmit only accepts the repository address over HTTP. **SSH URL will be rejected**.
-	- For the slip token policy, the grading will happen after the deadline. So, the deploy token should valid through the due date + 5 days.
-- Free to make a question through AjouBb. However, **YOU MIGHT NOT GET AN ANSWER IF THE ISSUE/TOPIC IS ALREADY DISCUSSED ON THIS HANDOUT**.
-- **QUESTIONS OVER EMAIL WILL BE IGNORED unless it concerns your privacy**.
